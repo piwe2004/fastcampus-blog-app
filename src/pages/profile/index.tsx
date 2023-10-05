@@ -1,7 +1,12 @@
 import React from 'react'
+import Profile from 'components/Profile'
+import PostListPage from 'components/PostList'
 
 export default function ProfilePage() {
     return (
-        <h1>Profile</h1>
+        <>
+            <Profile />
+            <PostListPage hasNavigation={false} />
+        </>
     )
 }

@@ -12,7 +12,6 @@ const imgArray = [IMAGE_1_URL, IMAGE_2_URL, IMAGE_3_URL]
 export default function Carousel() {
     const [activeImage, setActiveImage] = useState(1);
     const [selectNum, setselectNum] = useState(1)
-    console.log(activeImage)
     return (
         <div>
             <div className="carousel">

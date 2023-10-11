@@ -1,24 +1,58 @@
-import React from 'react'
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from "firebase/firestore";
+import { Link, useParams } from "react-router-dom";
+import { PostProps } from './PostList';
+import { db } from 'firebaseApp';
+import Loader from './Loader';
+
+
 
 export default function PostDetail() {
+    const params = useParams();
+    const [post, setPost] = useState<PostProps | null>(null);
+
+    const getPost = async (id:string) => {
+        if(id){
+            const docRef = doc(db, 'posts', id);
+            const docSnap = await getDoc(docRef);
+            
+            setPost({id :docSnap.id, ...docSnap.data() as PostProps})
+        }
+    }
+
+    const handleDelete = () => {
+        console.log('delete')
+    }
+
+    useEffect(() => {
+        if(params?.id) getPost(params?.id)
+    }, [params?.id])
+    
+    
     return (
         <>
             <div className='post__detail'>
+                {post ? (
                 <div className='post__box'>
-                    <h2 className='post__title'>Lorem Ipsum is simply</h2>
+                    <h2 className='post__title'>{post?.title}</h2>
                     <ul className='post__profile-box'>
                         <li className='post__profile'></li>
-                        <li className='post__author-name'></li>
-                        <li className='post__date'>2023.07.08 토요일</li>
+                        <li className='post__author-name'>{post?.email}</li>
+                        <li className='post__date'>{post?.createAt}</li>
                     </ul>
                     <div className='post__utils-box'>
-                        <div className='post__edit bnt-hover'>수정</div>
-                        <div className='post__delete bnt-hover'>삭제</div>
+                        <div className='post__edit bnt-hover'>
+                            <Link to={`/posts/edit/1`}>수정</Link>
+                        </div>
+                        <div className='post__delete bnt-hover' onClick={handleDelete}>삭제</div>
                     </div>
-                    <div className='post__text'>
-                        Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+                    <div className='post__text post__text--pre-wrap'>
+                        {post?.content}
                     </div>
                 </div>
+                )
+                : <Loader />
+            }
             </div>
         </>
     )

@@ -1,14 +1,22 @@
 import { useState, useEffect, useContext } from 'react'
-import { Link } from 'react-router-dom'
-import { collection, getDocs } from "firebase/firestore";
+import { Link, useNavigate } from 'react-router-dom'
+import { collection, deleteDoc, doc, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from 'firebaseApp';
 import AuthContext from 'context/AuthContext';
+import { toast } from 'react-toastify';
 
 interface PostListProps {
     hasNavigation?: boolean;
+    defaultTab?: TabType
 }
 
-type TabType = "all" | 'my';
+export interface CommentsInterface{
+    content:string;
+    uid:string;
+    createdAt:string;
+    email:string;
+    updatedAt:string;
+}
 
 export interface PostProps {
     id?: string;
@@ -17,26 +25,55 @@ export interface PostProps {
     content: string;
     summary: string;
     createAt: string;
+    updateAt:string;
+    uid:string;
+    category?:CategoryType;
+    comments?:CommentsInterface[];
 }
+type TabType = "all" | 'my';
+export type CategoryType = 'Frontend' | 'Backend' | 'Web' | 'Native';
+export const CATEGORIES: CategoryType[] = ["Frontend", "Backend", "Web", "Native"]
 
-export default function PostListPage({ hasNavigation = true }: PostListProps) {
-    const [activeTab, setActiveTab] = useState<TabType>('all');
-    const [posts, setPosts] = useState<any[]>([])
+export default function PostListPage({ hasNavigation = true, defaultTab = 'all', }: PostListProps) {
+    const [activeTab, setActiveTab] = useState<TabType | CategoryType>(defaultTab);
+    const [posts, setPosts] = useState<any[]>([]);
+    const { user } = useContext(AuthContext);
 
     const getPosts = async () => {
-        const datas = await getDocs(collection(db, 'posts'));
+        //const datas = await getDocs(collection(db, 'posts'));
+        setPosts([]);
+        let postsRef = collection(db, "posts");
+        let postsQuery;
+        if(activeTab === 'my' && user ){
+            postsQuery = query(postsRef, where('uid', '==', user.uid), orderBy("createAt", "desc"));
+        }else if(activeTab === 'all' ){
+            postsQuery = query(postsRef, orderBy("createAt", "desc"));
+        }else{
+            postsQuery = query(postsRef, where('category', '==', activeTab), orderBy("createAt", "desc"));
+        }
+        const datas = await getDocs(postsQuery);
         datas?.forEach((doc) => {
-            setPosts([])
             const dataObj = { ...doc.data(), id: doc.id };
             setPosts((prev) => [...prev, dataObj as PostProps])
         });
     }
 
-    const { user } = useContext(AuthContext);
 
     useEffect(() => {
         getPosts()
-    }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
+
+    const handleDelete = async (id:string) => {
+        const confirm = window.confirm('해당 글을 삭제 하시겠습니까?')
+        if(confirm && id ){
+            await deleteDoc(doc(db, 'posts', id));
+            toast.success('삭제되었습니다.');
+            getPosts()
+        }
+    }
+
+
 
     return (
         <>
@@ -44,6 +81,15 @@ export default function PostListPage({ hasNavigation = true }: PostListProps) {
                 <ul className='post__navigation'>
                     <li role='presentation' className={activeTab === 'all' ? "post__navigation--active" : ""} onClick={() => setActiveTab('all')}>전체</li>
                     <li role='presentation' className={activeTab === 'my' ? "post__navigation--active" : ""} onClick={() => setActiveTab('my')}>나의 글</li>
+                    {CATEGORIES?.map((category)=>(
+                        <li
+                            key={category}
+                            onClick={()=>setActiveTab(category)}
+                            className={activeTab === category 
+                                ? 'post__navigation--active' 
+                                : ''}
+                        >{category}</li>
+                    ))}
                 </ul>
             )}
             <div className='post__list'>
@@ -64,7 +110,7 @@ export default function PostListPage({ hasNavigation = true }: PostListProps) {
                                 <div className='post__edit'>
                                     <Link to={'/posts/edit/1'} className='bnt-hover'>수정</Link>
                                 </div>
-                                <div className='post__delete bnt-hover'>삭제</div>
+                                <div className='post__delete bnt-hover' onClick={()=>handleDelete(post.id as string)}>삭제</div>
                             </div>
                         )}
                     </div>
